@@ -1,42 +1,45 @@
-"""Part 1 -- scale the features, then discover classes with DBSCAN."""
+"""
+Part 1 -- scale the features, then discover classes with DBSCAN.
+
+The k-means panel is for contrast only. It is given the correct k and
+still gets the shapes wrong: assigning each point to its nearest centre
+can only carve the plane into straight-edged pieces.
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from sklearn.cluster import DBSCAN, KMeans
+
 from pipeline_common import load_split_scaled, VIEW_LIM
 
 
+# Clustering sees TRAINING data only
 X = load_split_scaled()["train"]
 
-db = DBSCAN(
-    eps=0.06,
-    min_samples=8
-)
 
+# Baseline DBSCAN configuration
+db = DBSCAN(eps=0.06, min_samples=8)
+
+# -1 means noise
 labels = db.fit_predict(X)
 
+
+# Get discovered classes, excluding noise
 classes = sorted(set(labels) - {-1})
 
-print(
-    f"{len(classes)} clusters; "
-    f"{(labels == -1).sum()} noise"
-)
+
+# Print results
+print(f"{len(classes)} clusters; {(labels == -1).sum()} noise")
 
 for c in classes:
-    print(
-        f" cluster {c}: "
-        f"{(labels == c).sum()} points"
-    )
-
-np.savetxt(
-    "labels.csv",
-    labels,
-    fmt="%d"
-)
+    print(f" cluster {c}: {(labels == c).sum()} points")
 
 
-# Compare with k-means
+# Save labels for Part 2
+np.savetxt("labels.csv", labels, fmt="%d")
+
+
+# Run k-means only for comparison
 kmeans_labels = KMeans(
     n_clusters=len(classes),
     n_init=10,
@@ -45,14 +48,12 @@ kmeans_labels = KMeans(
 
 
 MARKERS = ["o", "s", "^", "D", "v", "P"]
+
 GRAYS = ["0.75", "0.45", "0.15", "0.6", "0.3", "0.85"]
 
 
 def draw(ax, lab, title, show_noise):
-
-    for i, c in enumerate(
-        sorted(set(lab) - {-1})
-    ):
+    for i, c in enumerate(sorted(set(lab) - {-1})):
         pts = X[lab == c]
 
         ax.scatter(
@@ -76,7 +77,7 @@ def draw(ax, lab, title, show_noise):
             c="0.45",
             marker="x",
             linewidth=0.5,
-            label=f"noise, -1 (n={len(noise)})"
+            label=f"noise, $-1$ (n={len(noise)})"
         )
 
     ax.set_title(title, fontsize=9)
@@ -94,6 +95,7 @@ fig, axes = plt.subplots(
     sharey=True
 )
 
+
 draw(
     axes[0],
     labels,
@@ -108,7 +110,9 @@ draw(
     show_noise=False
 )
 
+
 axes[0].set_ylabel("scaled feature $x_2$")
+
 
 fig.savefig(
     "../figures/generated/clustered_space.pdf",
