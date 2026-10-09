@@ -18,7 +18,7 @@ from pipeline_common import (
 )
 
 
-BANDWIDTH = 0.05
+BANDWIDTH = 0.03
 
 # Fine grid used only for the figure, not for storage
 DISPLAY_N = 200

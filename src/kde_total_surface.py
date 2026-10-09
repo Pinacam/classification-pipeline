@@ -19,7 +19,7 @@ from pipeline_common import (
 )
 
 
-BANDWIDTH = 0.05
+BANDWIDTH = 0.03
 DISPLAY_N = 160
 
 

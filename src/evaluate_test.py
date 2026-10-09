@@ -1,12 +1,17 @@
+
 """
 Part 4 -- spend the TEST set once, on the frozen design.
 
-There are no ground-truth labels because DBSCAN invented the classes,
-so the honest question is whether the cheap stored uint8 model
-reproduces the continuous KDE decision on unseen test data.
+Compare the continuous KDE model with the stored uint8 model
+using real UV and IR sensor data.
+
+The actual lighting labels are also used to measure how well
+the stored model classifies LED, fluorescent, shade, and sun.
 """
 
+
 import numpy as np
+import pandas as pd
 
 from pipeline_common import (
     load_split_scaled,
@@ -21,7 +26,7 @@ from pipeline_common import (
 
 
 # Frozen validation-selected bandwidth
-BANDWIDTH = 0.05
+BANDWIDTH = 0.03
 
 
 # Load data
@@ -29,6 +34,7 @@ data = load_split_scaled()
 
 Xtr = data["train"]
 Xte = data["test"]
+y_test = data["y_test"]
 
 
 # DBSCAN labels from Part 1
@@ -189,3 +195,43 @@ for true_label in LABELS:
     print(
         f"{name:>10}{row}"
     )
+
+    
+# Compare stored predictions with actual lighting labels
+
+# Match DBSCAN cluster numbers to actual lighting classes
+training_confusion = pd.crosstab(
+    pd.Series(data["y_train"], name="Actual"),
+    pd.Series(labels, name="Cluster")
+)
+
+cluster_names = {}
+
+for c in classes:
+    cluster_names[c] = training_confusion[c].idxmax()
+
+# Convert stored cluster predictions into lighting names
+predicted_names = np.array([
+    cluster_names[c] if c != -1 else "unknown"
+    for c in stor
+])
+
+# Calculate classification accuracy
+accuracy = (predicted_names == y_test).mean()
+
+print(
+    f"\nStored model accuracy against actual labels: "
+    f"{100 * accuracy:.1f}%"
+)
+
+# Confusion table using actual lighting labels
+real_confusion = pd.crosstab(
+    pd.Series(y_test, name="Actual lighting"),
+    pd.Series(predicted_names, name="Predicted lighting")
+)
+
+print("\nActual vs Predicted Lighting:")
+print(real_confusion)
+
+# Save results for the report
+real_confusion.to_csv("../data/test_confusion.csv")

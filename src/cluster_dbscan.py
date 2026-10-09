@@ -1,3 +1,4 @@
+
 """
 Part 1 -- scale the features, then discover classes with DBSCAN.
 
@@ -8,17 +9,24 @@ can only carve the plane into straight-edged pieces.
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from sklearn.cluster import DBSCAN, KMeans
 
 from pipeline_common import load_split_scaled, VIEW_LIM
 
 
+# Load the real UV and IR sensor data
+data = load_split_scaled()
+
 # Clustering sees TRAINING data only
-X = load_split_scaled()["train"]
+X = data["train"]
+
+# Actual lighting labels used only for comparison
+true_labels = data["y_train"]
 
 
 # Baseline DBSCAN configuration
-db = DBSCAN(eps=0.06, min_samples=8)
+db = DBSCAN(eps=0.03, min_samples=8)
 
 # -1 means noise
 labels = db.fit_predict(X)
@@ -33,6 +41,20 @@ print(f"{len(classes)} clusters; {(labels == -1).sum()} noise")
 
 for c in classes:
     print(f" cluster {c}: {(labels == c).sum()} points")
+
+
+# Compare DBSCAN clusters with actual lighting conditions
+confusion = pd.crosstab(
+    pd.Series(true_labels, name="Actual lighting"),
+    pd.Series(labels, name="DBSCAN cluster")
+)
+
+print("\nDBSCAN vs Actual Lighting:")
+print(confusion)
+
+
+# Save confusion table for the report
+confusion.to_csv("../data/dbscan_confusion.csv")
 
 
 # Save labels for Part 2

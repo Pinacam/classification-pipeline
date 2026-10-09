@@ -6,6 +6,8 @@ on all four.
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KernelDensity
+from pathlib import Path
+import pandas as pd
 
 SEED = 20250903
 
@@ -35,82 +37,97 @@ def _arc(rng, cx, cy, r, a0_deg, a1_deg, n, jitter):
 
     return pts + rng.normal(0.0, jitter, pts.shape)
 
-
 def load_dataset(csv_path=None):
-    """Raw 2-D features: two crescents and a ring,
-    plus uniform noise.
-    """
+    """Load real UV and IR sensor data from the CSV."""
 
-    if csv_path is not None:
-        return np.loadtxt(csv_path, delimiter=",")
+    if csv_path is None:
+        csv_path = (
+            Path(__file__).resolve().parent.parent
+            / "data"
+            / "data_complete.csv"
+        )
 
-    rng = np.random.default_rng(SEED)
+    data = pd.read_csv(csv_path)
 
-    smile = _arc(
-        rng, 0.0, 0.0, 1.8,
-        200, 340, 340, 0.11
+    # Only use sensor measurements for classification
+    X = data[["uv_sensor", "IR_sensor"]].to_numpy(dtype=float)
+
+    return X
+
+def load_labeled_dataset():
+    """Load sensor readings and their real labels."""
+
+    csv_path = (
+        Path(__file__).resolve().parent.parent
+        / "data"
+        / "data_complete.csv"
     )
 
-    frown = _arc(
-        rng, 0.0, 3.2, 1.8,
-        20, 160, 300, 0.11
-    )
+    data = pd.read_csv(csv_path)
 
-    ring = _arc(
-        rng, 4.8, 1.6, 2.0,
-        0, 360, 300, 0.11
-    )
+    X = data[["uv_sensor", "IR_sensor"]].to_numpy(dtype=float)
+    y = data["label"].to_numpy()
 
-    X = np.vstack([smile, frown, ring])
-
-    noise = rng.uniform(
-        X.min(axis=0) - 0.4,
-        X.max(axis=0) + 0.4,
-        size=(90, 2)
-    )
-
-    return np.vstack([X, noise])
+    return X, y
 
 
 def scale_features(X, bounds=None):
-    """Min-max each feature onto [0, 1].
-    Returns (X_scaled, bounds).
-    """
+    """Apply logarithmic IR scaling, then min-max scale both sensors."""
 
+    # Make a copy so the original readings stay unchanged
+    X = np.asarray(X, dtype=float).copy()
+
+    # Reduce the effect of very large IR readings
+    X[:, 1] = np.log1p(X[:, 1])
+
+    # Use training bounds for validation and testing too
     lo, hi = bounds if bounds is not None else (
         X.min(axis=0),
         X.max(axis=0)
     )
 
-    return (X - lo) / (hi - lo), (lo, hi)
+    # Scale both features between 0 and 1
+    X_scaled = (X - lo) / (hi - lo)
+
+    return X_scaled, (lo, hi)
 
 
-def split_data(X, seed=SEED):
-    """Split raw points into train, validation and test."""
 
-    train, rest = train_test_split(
-        X,
+
+def split_data(X, y, seed=SEED):
+    """Split sensor data and labels into train, validation, and test."""
+
+    X_train, X_rest, y_train, y_rest = train_test_split(
+        X, y,
         train_size=TRAIN_FRAC,
-        random_state=seed
+        random_state=seed,
+        stratify=y
     )
 
-    val, test = train_test_split(
-        rest,
+    X_val, X_test, y_val, y_test = train_test_split(
+        X_rest, y_rest,
         test_size=0.5,
-        random_state=seed
+        random_state=seed,
+        stratify=y_rest
     )
 
-    return train, val, test
+    return X_train, X_val, X_test, y_train, y_val, y_test
+
+
 
 
 def load_split_scaled(seed=SEED):
-    """Load, split and scale every subset using TRAINING bounds."""
+    """Load, split and scale the real sensor data."""
 
-    train, val, test = split_data(
-        load_dataset(),
-        seed
+    # Load sensor measurements and their real labels
+    X, y = load_labeled_dataset()
+
+    # Split into training, validation and testing
+    train, val, test, y_train, y_val, y_test = split_data(
+        X, y, seed
     )
 
+    # Scale using only the training data bounds
     train_s, bounds = scale_features(train)
     val_s, _ = scale_features(val, bounds)
     test_s, _ = scale_features(test, bounds)
@@ -119,8 +136,12 @@ def load_split_scaled(seed=SEED):
         "train": train_s,
         "val": val_s,
         "test": test_s,
+        "y_train": y_train,
+        "y_val": y_val,
+        "y_test": y_test,
         "bounds": bounds
     }
+
 
 
 def make_grid():

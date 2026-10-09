@@ -1,0 +1,5 @@
+Actual lighting,LED,fluorescent,shade,sun
+LED,120,0,0,0
+fluorescent,0,120,0,0
+shade,0,0,120,0
+sun,0,0,0,120
