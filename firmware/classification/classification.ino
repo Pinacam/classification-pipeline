@@ -133,23 +133,34 @@ void loop() {
 
     unsigned long inferenceTime = micros() - startTime;
 
-    // Print results
-    Serial.print("UV: ");
+   
+    // Print raw and filtered sensor readings for the report
+    // These values will be used to compare EMA smoothing
+
+    Serial.print("Raw UV: ");
+    Serial.print(rawUV);
+
+    Serial.print(" | Filtered UV: ");
     Serial.print(uvFiltered, 2);
 
-    Serial.print(" | IR: ");
+    Serial.print(" | Raw IR: ");
+    Serial.print(rawIR);
+
+    Serial.print(" | Filtered IR: ");
     Serial.print(irFiltered, 2);
 
+    // Print the predicted lighting condition
     Serial.print(" | Prediction: ");
 
     if (prediction == -1) {
-      Serial.print("UNKNOWN");
+        Serial.print("UNKNOWN");
     } else {
-      Serial.print(CLASS_NAMES[prediction]);
+        Serial.print(CLASS_NAMES[prediction]);
     }
 
+    // Print the time needed to classify one reading
     Serial.print(" | Inference: ");
     Serial.print(inferenceTime);
     Serial.println(" us");
-  }
-}
+  }//end sample interval
+}//end of loop
